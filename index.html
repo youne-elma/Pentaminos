@@ -147,6 +147,7 @@
       }
 
       .cell::after {
+        content: attr(data-detail);
         position: absolute;
         left: 5px;
         top: 4px;
@@ -301,27 +302,79 @@
         font-size: 20px;
       }
 
-      .legend {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 8px;
-      }
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
 
-      .legend-item {
-        display: flex;
-        align-items: center;
-        gap: 7px;
-        min-width: 0;
-        font-weight: 800;
-      }
+    .legend-item {
+      display: grid;
+      grid-template-columns: 50px 1fr;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      min-height: 56px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      cursor: grab;
+      font-weight: 800;
+      padding: 7px;
+      user-select: none;
+      touch-action: none;
+    }
 
-      .swatch {
-        width: 22px;
-        height: 22px;
-        border-radius: 6px;
-        border: 1px solid rgba(31, 41, 51, 0.18);
-        flex: 0 0 auto;
-      }
+    .legend-item.active {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+    }
+
+    .legend-item:active {
+      cursor: grabbing;
+    }
+
+    .swatch {
+      display: grid;
+      grid-template-columns: repeat(5, 8px);
+      grid-template-rows: repeat(5, 8px);
+      gap: 1px;
+      width: 44px;
+      height: 44px;
+      align-content: center;
+      justify-content: center;
+    }
+
+    .mini-cell {
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+      background: transparent;
+    }
+
+    .mini-cell.filled {
+      border: 1px solid rgba(31, 41, 51, 0.2);
+    }
+
+    .drag-preview {
+      position: fixed;
+      left: 0;
+      top: 0;
+      display: grid;
+      gap: 3px;
+      pointer-events: none;
+      z-index: 20;
+      opacity: 0.88;
+      transform: translate(-999px, -999px);
+    }
+
+    .drag-preview-cell {
+      width: 22px;
+      height: 22px;
+      border-radius: 5px;
+      border: 1px solid rgba(31, 41, 51, 0.22);
+      box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.12);
+    }
 
       .coords {
         max-height: 270px;
@@ -539,7 +592,7 @@
           </section>
 
           <section class="panel">
-            <h2>Legende</h2>
+            <h2>Pieces</h2>
             <div id="legend" class="legend"></div>
           </section>
 
@@ -550,6 +603,7 @@
         </aside>
       </section>
     </main>
+    <div id="dragPreview" class="drag-preview" aria-hidden="true"></div>
 
     <script>
       const LETTERS = "ABCDEFGH";
@@ -690,6 +744,7 @@
 
       const boardEl = document.querySelector("#board");
       const legendEl = document.querySelector("#legend");
+      const dragPreviewEl = document.querySelector("#dragPreview");
       const coordsEl = document.querySelector("#coords");
       const statusEl = document.querySelector("#status");
       const solutionNoEl = document.querySelector("#solutionNo");
@@ -719,6 +774,7 @@
       let selectedPiece = "F";
       let orientationIndex = 0;
       let fixedPlacement = null;
+      let dragState = null;
 
       function cellName(x, y) {
         return `${LETTERS[x]}${y + 1}`;
@@ -759,6 +815,91 @@
       function selectedShape() {
         const shapes = orientations(PENTOMINOES[selectedPiece]);
         return shapes[orientationIndex % shapes.length];
+      }
+
+      function updatePaletteSelection() {
+        for (const item of legendEl.querySelectorAll(".legend-item")) {
+          item.classList.toggle("active", item.dataset.piece === selectedPiece);
+        }
+        pieceSelect.value = selectedPiece;
+      }
+
+      function selectPalettePiece(piece) {
+        if (running) return;
+        selectedPiece = piece;
+        orientationIndex = 0;
+        setMode("piece");
+        updatePaletteSelection();
+        setStatus(`Piece ${piece} selectionnee`);
+      }
+
+      function renderDragPreview(piece, clientX, clientY) {
+        const shape = selectedShape();
+        const width = Math.max(...shape.map(([x]) => x)) + 1;
+        const height = Math.max(...shape.map(([, y]) => y)) + 1;
+        const filled = new Set(shape.map(([x, y]) => `${x},${y}`));
+        dragPreviewEl.replaceChildren();
+        dragPreviewEl.style.gridTemplateColumns = `repeat(${width}, 22px)`;
+        dragPreviewEl.style.gridTemplateRows = `repeat(${height}, 22px)`;
+        for (let y = 0; y < height; y += 1) {
+          for (let x = 0; x < width; x += 1) {
+            const previewCell = document.createElement("span");
+            if (filled.has(`${x},${y}`)) {
+              previewCell.className = "drag-preview-cell";
+              previewCell.style.background = COLORS[piece];
+            }
+            dragPreviewEl.append(previewCell);
+          }
+        }
+        dragPreviewEl.style.transform = `translate(${clientX + 12}px, ${clientY + 12}px)`;
+      }
+
+      function cellFromPoint(clientX, clientY) {
+        const element = document.elementFromPoint(clientX, clientY);
+        const cell = element?.closest?.(".cell");
+        if (!cell || !boardEl.contains(cell)) return null;
+        return {
+          x: Number(cell.dataset.x),
+          y: Number(cell.dataset.y),
+        };
+      }
+
+      function startPieceDrag(event, piece) {
+        if (running || event.button > 0) return;
+        event.preventDefault();
+        selectedPiece = piece;
+        setMode("piece");
+        updatePaletteSelection();
+        dragState = {
+          pointerId: event.pointerId,
+          piece,
+          moved: false,
+          startX: event.clientX,
+          startY: event.clientY,
+        };
+        event.currentTarget.setPointerCapture(event.pointerId);
+        renderDragPreview(piece, event.clientX, event.clientY);
+      }
+
+      function movePieceDrag(event) {
+        if (!dragState || event.pointerId !== dragState.pointerId) return;
+        const distance = Math.hypot(
+          event.clientX - dragState.startX,
+          event.clientY - dragState.startY,
+        );
+        dragState.moved = dragState.moved || distance > 3;
+        renderDragPreview(dragState.piece, event.clientX, event.clientY);
+      }
+
+      function endPieceDrag(event) {
+        if (!dragState || event.pointerId !== dragState.pointerId) return;
+        const dropCell = cellFromPoint(event.clientX, event.clientY);
+        dragPreviewEl.replaceChildren();
+        dragPreviewEl.style.transform = "translate(-999px, -999px)";
+        if (dropCell && dragState.moved) {
+          placeFixedPiece(dropCell.x, dropCell.y);
+        }
+        dragState = null;
       }
 
       function fixedCellKeys() {
@@ -857,14 +998,29 @@
         for (const piece of PIECES) {
           const item = document.createElement("div");
           item.className = "legend-item";
+          item.dataset.piece = piece;
           const swatch = document.createElement("span");
           swatch.className = "swatch";
-          swatch.style.background = COLORS[piece];
+          const shape = normalize(PENTOMINOES[piece]);
+          const filled = new Set(shape.map(([x, y]) => `${x},${y}`));
+          for (let y = 0; y < 5; y += 1) {
+            for (let x = 0; x < 5; x += 1) {
+              const mini = document.createElement("span");
+              mini.className = `mini-cell ${filled.has(`${x},${y}`) ? "filled" : ""}`;
+              if (filled.has(`${x},${y}`)) mini.style.background = COLORS[piece];
+              swatch.append(mini);
+            }
+          }
           const label = document.createElement("span");
           label.textContent = piece;
           item.append(swatch, label);
+          item.addEventListener("click", () => selectPalettePiece(piece));
+          item.addEventListener("pointerdown", (event) =>
+            startPieceDrag(event, piece),
+          );
           legendEl.append(item);
         }
+        updatePaletteSelection();
       }
 
       function setStatus(text) {
@@ -1380,6 +1536,7 @@
         selectedPiece = pieceSelect.value;
         orientationIndex = 0;
         setMode("piece");
+        updatePaletteSelection();
         setStatus(`Piece ${selectedPiece} selectionnee`);
       });
       rotateBtn.addEventListener("click", () => {
@@ -1401,6 +1558,9 @@
         setStatus("Miroir applique");
       });
       clearPieceBtn.addEventListener("click", clearFixedPiece);
+      window.addEventListener("pointermove", movePieceDrag);
+      window.addEventListener("pointerup", endPieceDrag);
+      window.addEventListener("pointercancel", endPieceDrag);
       prevBtn.addEventListener("click", () => showSolution(currentIndex - 1));
       nextBtn.addEventListener("click", () => showSolution(currentIndex + 1));
       resetBtn.addEventListener("click", resetView);
