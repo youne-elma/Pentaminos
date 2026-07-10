@@ -1,698 +1,732 @@
 <!doctype html>
 <html lang="fr">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Solutions Pentaminos 8x8</title>
-  <style>
-    :root {
-      --bg: #f6f4ef;
-      --panel: #ffffff;
-      --text: #1f2933;
-      --muted: #687385;
-      --line: #d7dde7;
-      --blocked: #222831;
-      --accent: #0f766e;
-      --accent-strong: #0b5f59;
-      --shadow: 0 18px 45px rgba(31, 41, 51, 0.13);
-      --cell: clamp(34px, 8.3vmin, 72px);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      color: var(--text);
-      background:
-        linear-gradient(135deg, rgba(15, 118, 110, 0.12), transparent 34%),
-        linear-gradient(315deg, rgba(185, 28, 28, 0.10), transparent 30%),
-        var(--bg);
-    }
-
-    button,
-    input {
-      font: inherit;
-    }
-
-    .app {
-      width: min(1180px, calc(100% - 32px));
-      margin: 0 auto;
-      padding: 24px 0 34px;
-    }
-
-    .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 18px;
-      padding: 12px 0 22px;
-    }
-
-    h1 {
-      margin: 0;
-      font-size: clamp(28px, 4vw, 48px);
-      line-height: 1;
-      letter-spacing: 0;
-    }
-
-    .subtitle {
-      margin: 8px 0 0;
-      color: var(--muted);
-      font-size: 15px;
-    }
-
-    .status {
-      min-width: 230px;
-      padding: 10px 12px;
-      border: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.78);
-      border-radius: 8px;
-      color: var(--muted);
-      text-align: right;
-      font-weight: 650;
-    }
-
-    .layout {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 330px;
-      gap: 22px;
-      align-items: start;
-    }
-
-    .board-wrap {
-      display: grid;
-      justify-items: center;
-      gap: 14px;
-      padding: 18px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.82);
-      box-shadow: var(--shadow);
-    }
-
-    .board {
-      display: grid;
-      grid-template-columns: 28px repeat(8, var(--cell));
-      grid-template-rows: 28px repeat(8, var(--cell));
-      gap: 4px;
-      align-items: stretch;
-      justify-content: center;
-    }
-
-    .axis {
-      display: grid;
-      place-items: center;
-      color: #4b5565;
-      font-size: 13px;
-      font-weight: 800;
-    }
-
-    .cell {
-      position: relative;
-      display: grid;
-      place-items: center;
-      min-width: 0;
-      border: 1px solid rgba(31, 41, 51, 0.18);
-      border-radius: 8px;
-      background: #fdfdfb;
-      color: #13202a;
-      font-size: clamp(18px, 4.4vmin, 34px);
-      font-weight: 900;
-      line-height: 1;
-      box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.08);
-      transition: transform 150ms ease, filter 150ms ease;
-    }
-
-    .cell:hover {
-      transform: translateY(-1px);
-      filter: brightness(1.04);
-      z-index: 1;
-    }
-
-    .cell::after {
-      content: attr(data-name);
-      position: absolute;
-      left: 5px;
-      top: 4px;
-      font-size: 10px;
-      font-weight: 800;
-      color: rgba(19, 32, 42, 0.55);
-    }
-
-    .blocked {
-      background: repeating-linear-gradient(135deg, var(--blocked), var(--blocked) 6px, #3a424d 6px, #3a424d 12px);
-      color: #fff;
-      box-shadow: none;
-    }
-
-    .blocked::after {
-      color: rgba(255, 255, 255, 0.72);
-    }
-
-    .empty {
-      color: transparent;
-    }
-
-    .side {
-      display: grid;
-      gap: 14px;
-    }
-
-    .panel {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.86);
-      box-shadow: 0 12px 28px rgba(31, 41, 51, 0.09);
-      padding: 14px;
-    }
-
-    .panel h2 {
-      margin: 0 0 12px;
-      font-size: 16px;
-      letter-spacing: 0;
-    }
-
-    .controls {
-      display: grid;
-      gap: 10px;
-    }
-
-    .control-row {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 40px;
-      padding: 0 14px;
-      border: 1px solid transparent;
-      border-radius: 8px;
-      background: var(--accent);
-      color: #fff;
-      cursor: pointer;
-      font-weight: 800;
-      white-space: nowrap;
-    }
-
-    .btn:hover {
-      background: var(--accent-strong);
-    }
-
-    .btn.secondary {
-      border-color: var(--line);
-      background: #fff;
-      color: var(--text);
-    }
-
-    .btn.secondary:hover {
-      background: #f1f5f4;
-    }
-
-    .btn:disabled {
-      cursor: not-allowed;
-      opacity: 0.52;
-    }
-
-    .limit {
-      width: 86px;
-      min-height: 40px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 0 10px;
-      color: var(--text);
-      background: #fff;
-      font-weight: 750;
-    }
-
-    .metrics {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-
-    .metric {
-      padding: 10px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #fff;
-    }
-
-    .metric span {
-      display: block;
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 800;
-      text-transform: uppercase;
-    }
-
-    .metric strong {
-      display: block;
-      margin-top: 3px;
-      font-size: 20px;
-    }
-
-    .legend {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-    }
-
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      min-width: 0;
-      font-weight: 800;
-    }
-
-    .swatch {
-      width: 22px;
-      height: 22px;
-      border-radius: 6px;
-      border: 1px solid rgba(31, 41, 51, 0.18);
-      flex: 0 0 auto;
-    }
-
-    .coords {
-      max-height: 270px;
-      overflow: auto;
-      display: grid;
-      gap: 6px;
-      padding-right: 2px;
-    }
-
-    .coord-line {
-      display: grid;
-      grid-template-columns: 22px 1fr;
-      gap: 8px;
-      align-items: start;
-      font-size: 13px;
-      color: #3b4655;
-      line-height: 1.35;
-    }
-
-    .coord-line strong {
-      font-size: 14px;
-      color: var(--text);
-    }
-
-    @media (max-width: 940px) {
-      .layout {
-        grid-template-columns: 1fr;
-      }
-
-      .side {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      .coords-panel {
-        grid-column: 1 / -1;
-      }
-    }
-
-    @media (max-width: 640px) {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Solutions Pentaminos 8x8</title>
+    <style>
       :root {
-        --cell: min(10.2vw, 44px);
+        --bg: #f6f4ef;
+        --panel: #ffffff;
+        --text: #1f2933;
+        --muted: #687385;
+        --line: #d7dde7;
+        --blocked: #222831;
+        --accent: #0f766e;
+        --accent-strong: #0b5f59;
+        --shadow: 0 18px 45px rgba(31, 41, 51, 0.13);
+        --cell: clamp(34px, 8.3vmin, 72px);
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--text);
+        background:
+          linear-gradient(135deg, rgba(15, 118, 110, 0.12), transparent 34%),
+          linear-gradient(315deg, rgba(185, 28, 28, 0.1), transparent 30%),
+          var(--bg);
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      select {
+        font: inherit;
       }
 
       .app {
-        width: min(100% - 18px, 1180px);
-        padding-top: 12px;
+        width: min(1180px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 24px 0 34px;
       }
 
       .topbar {
-        align-items: stretch;
-        flex-direction: column;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 12px 0 22px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(28px, 4vw, 48px);
+        line-height: 1;
+        letter-spacing: 0;
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 15px;
       }
 
       .status {
-        min-width: 0;
-        text-align: left;
+        min-width: 230px;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.78);
+        border-radius: 8px;
+        color: var(--muted);
+        text-align: right;
+        font-weight: 650;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 330px;
+        gap: 22px;
+        align-items: start;
       }
 
       .board-wrap {
-        padding: 10px;
-        overflow-x: auto;
-        justify-items: start;
+        display: grid;
+        justify-items: center;
+        gap: 14px;
+        padding: 18px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.82);
+        box-shadow: var(--shadow);
+      }
+
+      .board {
+        display: grid;
+        grid-template-columns: 28px repeat(8, var(--cell));
+        grid-template-rows: 28px repeat(8, var(--cell));
+        gap: 4px;
+        align-items: stretch;
+        justify-content: center;
+      }
+
+      .axis {
+        display: grid;
+        place-items: center;
+        color: #4b5565;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .cell {
+        position: relative;
+        display: grid;
+        place-items: center;
+        min-width: 0;
+        border: 1px solid rgba(31, 41, 51, 0.18);
+        border-radius: 8px;
+        background: #fdfdfb;
+        color: #13202a;
+        font-size: clamp(18px, 4.4vmin, 34px);
+        font-weight: 900;
+        line-height: 1;
+        box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.08);
+        transition:
+          transform 150ms ease,
+          filter 150ms ease;
+      }
+
+      .cell:hover {
+        transform: translateY(-1px);
+        filter: brightness(1.04);
+        z-index: 1;
+      }
+
+      .cell::after {
+        position: absolute;
+        left: 5px;
+        top: 4px;
+        font-size: 10px;
+        font-weight: 800;
+        color: rgba(19, 32, 42, 0.55);
+      }
+
+      .blocked {
+        background: repeating-linear-gradient(
+          135deg,
+          var(--blocked),
+          var(--blocked) 6px,
+          #3a424d 6px,
+          #3a424d 12px
+        );
+        color: #fff;
+        padding: 14px 4px 4px;
+        text-align: center;
+        word-break: break-word;
+        font-size: clamp(10px, 2vmin, 16px);
+        box-shadow: none;
+      }
+
+      .blocked::after {
+        color: rgba(255, 255, 255, 0.72);
+      }
+
+      .empty {
+        color: #13202a;
+        padding: 14px 4px 4px;
+        text-align: center;
+        word-break: break-word;
+        font-size: clamp(10px, 2vmin, 16px);
       }
 
       .side {
-        grid-template-columns: 1fr;
+        display: grid;
+        gap: 14px;
+      }
+
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.86);
+        box-shadow: 0 12px 28px rgba(31, 41, 51, 0.09);
+        padding: 14px;
+      }
+
+      .panel h2 {
+        margin: 0 0 12px;
+        font-size: 16px;
+        letter-spacing: 0;
+      }
+
+      .controls {
+        display: grid;
+        gap: 10px;
       }
 
       .control-row {
-        flex-wrap: wrap;
+        display: flex;
+        gap: 8px;
+        align-items: center;
       }
 
       .btn {
-        flex: 1 1 auto;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 40px;
+        padding: 0 14px;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        background: var(--accent);
+        color: #fff;
+        cursor: pointer;
+        font-weight: 800;
+        white-space: nowrap;
       }
-    }
-  </style>
-</head>
-<body>
-  <main class="app">
-    <header class="topbar">
-      <div>
-        <h1>Pentaminos 8x8</h1>
-        <p class="subtitle">Echiquier A-H / 1-8, 4 cases noires au choix.</p>
-      </div>
-      <div id="status" class="status">Pret a calculer</div>
-    </header>
 
-    <section class="layout">
-      <div class="board-wrap">
-        <div id="board" class="board" aria-label="Echiquier 8 par 8"></div>
-      </div>
-
-      <aside class="side">
-        <section class="panel">
-          <h2>Commandes</h2>
-          <div class="controls">
-            <div class="control-row">
-              <button id="solveBtn" class="btn" type="button">Calculer</button>
-              <button id="prevBtn" class="btn secondary" type="button" disabled>Precedente</button>
-              <button id="nextBtn" class="btn secondary" type="button" disabled>Suivante</button>
-            </div>
-            <div class="control-row">
-              <input id="limitInput" class="limit" type="number" min="1" max="500" value="50" aria-label="Nombre de solutions a chercher">
-              <button id="resetBtn" class="btn secondary" type="button">Reinitialiser</button>
-              <button id="cornersBtn" class="btn secondary" type="button">Coins</button>
-              <button id="clearBtn" class="btn secondary" type="button">Effacer</button>
-            </div>
-          </div>
-        </section>
-
-        <section class="panel">
-          <h2>Etat</h2>
-          <div class="metrics">
-            <div class="metric">
-              <span>Solution</span>
-              <strong id="solutionNo">0 / 0</strong>
-            </div>
-            <div class="metric">
-              <span>Pieces</span>
-              <strong>12</strong>
-            </div>
-            <div class="metric">
-              <span>Cases</span>
-              <strong id="openCells">60</strong>
-            </div>
-            <div class="metric">
-              <span>Noires</span>
-              <strong id="blockedCount">4 / 4</strong>
-            </div>
-          </div>
-        </section>
-
-        <section class="panel">
-          <h2>Legende</h2>
-          <div id="legend" class="legend"></div>
-        </section>
-
-        <section class="panel coords-panel">
-          <h2>Coordonnees</h2>
-          <div id="coords" class="coords"></div>
-        </section>
-      </aside>
-    </section>
-  </main>
-
-  <script>
-    const LETTERS = "ABCDEFGH";
-    const PIECES = ["F", "I", "L", "N", "P", "T", "U", "V", "W", "X", "Y", "Z"];
-    const COLORS = {
-      F: "#ef476f",
-      I: "#118ab2",
-      L: "#ff9f1c",
-      N: "#8b5cf6",
-      P: "#06d6a0",
-      T: "#f97316",
-      U: "#3b82f6",
-      V: "#84cc16",
-      W: "#ec4899",
-      X: "#14b8a6",
-      Y: "#eab308",
-      Z: "#6366f1"
-    };
-    const DEFAULT_BLOCKED = ["0,0", "7,0", "0,7", "7,7"];
-
-    const boardEl = document.querySelector("#board");
-    const legendEl = document.querySelector("#legend");
-    const coordsEl = document.querySelector("#coords");
-    const statusEl = document.querySelector("#status");
-    const solutionNoEl = document.querySelector("#solutionNo");
-    const solveBtn = document.querySelector("#solveBtn");
-    const prevBtn = document.querySelector("#prevBtn");
-    const nextBtn = document.querySelector("#nextBtn");
-    const resetBtn = document.querySelector("#resetBtn");
-    const cornersBtn = document.querySelector("#cornersBtn");
-    const clearBtn = document.querySelector("#clearBtn");
-    const limitInput = document.querySelector("#limitInput");
-    const openCellsEl = document.querySelector("#openCells");
-    const blockedCountEl = document.querySelector("#blockedCount");
-
-    let worker = null;
-    let solutions = [];
-    let currentIndex = -1;
-    let running = false;
-    let blockedCells = new Set(DEFAULT_BLOCKED);
-
-    function cellName(x, y) {
-      return `${LETTERS[x]}${y + 1}`;
-    }
-
-    function createBoard() {
-      boardEl.replaceChildren();
-      boardEl.append(document.createElement("div"));
-      for (const letter of LETTERS) {
-        const axis = document.createElement("div");
-        axis.className = "axis";
-        axis.textContent = letter;
-        boardEl.append(axis);
+      .btn:hover {
+        background: var(--accent-strong);
       }
-      for (let y = 0; y < 8; y += 1) {
-        const rowAxis = document.createElement("div");
-        rowAxis.className = "axis";
-        rowAxis.textContent = String(y + 1);
-        boardEl.append(rowAxis);
-        for (let x = 0; x < 8; x += 1) {
-          const cell = document.createElement("div");
-          const isBlocked = blockedCells.has(`${x},${y}`);
-          cell.className = `cell ${isBlocked ? "blocked" : "empty"}`;
-          cell.dataset.x = String(x);
-          cell.dataset.y = String(y);
-          cell.dataset.name = cellName(x, y);
-          cell.textContent = isBlocked ? "" : ".";
-          cell.addEventListener("click", () => toggleBlockedCell(x, y));
-          boardEl.append(cell);
+
+      .btn.secondary {
+        border-color: var(--line);
+        background: #fff;
+        color: var(--text);
+      }
+
+      .btn.secondary:hover {
+        background: #f1f5f4;
+      }
+
+      .btn:disabled {
+        cursor: not-allowed;
+        opacity: 0.52;
+      }
+
+      .limit {
+        width: 86px;
+        min-height: 40px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 0 10px;
+        color: var(--text);
+        background: #fff;
+        font-weight: 750;
+      }
+
+      .piece-select {
+        min-height: 40px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 0 10px;
+        color: var(--text);
+        background: #fff;
+        font-weight: 800;
+      }
+
+      .mode-btn.active {
+        border-color: var(--accent);
+        background: #e6f4f1;
+        color: var(--accent-strong);
+      }
+
+      .metrics {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .metric {
+        padding: 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      .metric span {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .metric strong {
+        display: block;
+        margin-top: 3px;
+        font-size: 20px;
+      }
+
+      .legend {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        min-width: 0;
+        font-weight: 800;
+      }
+
+      .swatch {
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        border: 1px solid rgba(31, 41, 51, 0.18);
+        flex: 0 0 auto;
+      }
+
+      .coords {
+        max-height: 270px;
+        overflow: auto;
+        display: grid;
+        gap: 6px;
+        padding-right: 2px;
+      }
+
+      .coord-line {
+        display: grid;
+        grid-template-columns: 22px 1fr;
+        gap: 8px;
+        align-items: start;
+        font-size: 13px;
+        color: #3b4655;
+        line-height: 1.35;
+      }
+
+      .coord-line strong {
+        font-size: 14px;
+        color: var(--text);
+      }
+
+      .fixed-note {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.4;
+        min-height: 18px;
+      }
+
+      @media (max-width: 940px) {
+        .layout {
+          grid-template-columns: 1fr;
         }
-      }
-      updateBlockedMetrics();
-    }
 
-    function createLegend() {
-      legendEl.replaceChildren();
-      for (const piece of PIECES) {
-        const item = document.createElement("div");
-        item.className = "legend-item";
-        const swatch = document.createElement("span");
-        swatch.className = "swatch";
-        swatch.style.background = COLORS[piece];
-        const label = document.createElement("span");
-        label.textContent = piece;
-        item.append(swatch, label);
-        legendEl.append(item);
-      }
-    }
+        .side {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
 
-    function setStatus(text) {
-      statusEl.textContent = text;
-    }
-
-    function setControls(running) {
-      solveBtn.disabled = running;
-      limitInput.disabled = running;
-      cornersBtn.disabled = running;
-      clearBtn.disabled = running;
-      prevBtn.disabled = running || currentIndex <= 0;
-      nextBtn.disabled = running || currentIndex < 0 || currentIndex >= solutions.length - 1;
-    }
-
-    function updateBlockedMetrics() {
-      blockedCountEl.textContent = `${blockedCells.size} / 4`;
-      openCellsEl.textContent = String(64 - blockedCells.size);
-    }
-
-    function clearSolutions() {
-      solutions = [];
-      currentIndex = -1;
-      coordsEl.textContent = "";
-      solutionNoEl.textContent = "0 / 0";
-      if (worker) {
-        worker.terminate();
-        worker = null;
-      }
-      setControls(running);
-    }
-
-    function toggleBlockedCell(x, y) {
-      if (running) return;
-      const key = `${x},${y}`;
-      clearSolutions();
-      if (blockedCells.has(key)) {
-        blockedCells.delete(key);
-      } else if (blockedCells.size < 4) {
-        blockedCells.add(key);
-      } else {
-        setStatus("Maximum 4 cases noires");
-        return;
-      }
-      createBoard();
-      setStatus(blockedCells.size === 4 ? "Pret a calculer" : "Choisis 4 cases noires");
-    }
-
-    function setDefaultBlocked() {
-      if (running) return;
-      clearSolutions();
-      blockedCells = new Set(DEFAULT_BLOCKED);
-      createBoard();
-      setStatus("Coins selectionnes");
-    }
-
-    function clearBlocked() {
-      if (running) return;
-      clearSolutions();
-      blockedCells = new Set();
-      createBoard();
-      setStatus("Choisis 4 cases noires");
-    }
-
-    function renderSolution(solution) {
-      const byCell = new Map();
-      for (const placement of solution) {
-        for (const [x, y] of placement.cells) {
-          byCell.set(`${x},${y}`, placement.piece);
+        .coords-panel {
+          grid-column: 1 / -1;
         }
       }
 
-      for (const cell of boardEl.querySelectorAll(".cell")) {
-        const x = Number(cell.dataset.x);
-        const y = Number(cell.dataset.y);
-        const key = `${x},${y}`;
-        if (blockedCells.has(key)) {
-          cell.className = "cell blocked";
-          cell.style.background = "";
-          cell.textContent = "";
-          continue;
+      @media (max-width: 640px) {
+        :root {
+          --cell: min(10.2vw, 44px);
         }
-        const piece = byCell.get(key);
-        cell.className = `cell ${piece ? "" : "empty"}`;
-        cell.style.background = piece ? COLORS[piece] : "";
-        cell.textContent = piece || ".";
+
+        .app {
+          width: min(100% - 18px, 1180px);
+          padding-top: 12px;
+        }
+
+        .topbar {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .status {
+          min-width: 0;
+          text-align: left;
+        }
+
+        .board-wrap {
+          padding: 10px;
+          overflow-x: auto;
+          justify-items: start;
+        }
+
+        .side {
+          grid-template-columns: 1fr;
+        }
+
+        .control-row {
+          flex-wrap: wrap;
+        }
+
+        .btn {
+          flex: 1 1 auto;
+        }
       }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <header class="topbar">
+        <div>
+          <h1>Pentaminos 8x8</h1>
+          <p class="subtitle">Echiquier A-H / 1-8, 4 cases noires au choix.</p>
+        </div>
+        <div id="status" class="status">Pret a calculer</div>
+      </header>
 
-      const lines = [...solution]
-        .sort((a, b) => a.piece.localeCompare(b.piece))
-        .map((placement) => {
-          const row = document.createElement("div");
-          row.className = "coord-line";
-          const title = document.createElement("strong");
-          title.textContent = placement.piece;
-          const coords = document.createElement("span");
-          coords.textContent = placement.cells
-            .map(([x, y]) => cellName(x, y))
-            .join(" ");
-          row.append(title, coords);
-          return row;
-        });
-      coordsEl.replaceChildren(...lines);
-      solutionNoEl.textContent = `${currentIndex + 1} / ${solutions.length}`;
-      updateBlockedMetrics();
-    }
+      <section class="layout">
+        <div class="board-wrap">
+          <div id="board" class="board" aria-label="Echiquier 8 par 8"></div>
+        </div>
 
-    function resetView() {
-      clearSolutions();
-      createBoard();
-      setStatus(blockedCells.size === 4 ? "Pret a calculer" : "Choisis 4 cases noires");
-      setControls(false);
-    }
+        <aside class="side">
+          <section class="panel">
+            <h2>Commandes</h2>
+            <div class="controls">
+              <div class="control-row">
+                <button id="solveBtn" class="btn" type="button">
+                  Calculer
+                </button>
+                <button
+                  id="prevBtn"
+                  class="btn secondary"
+                  type="button"
+                  disabled
+                >
+                  Precedente
+                </button>
+                <button
+                  id="nextBtn"
+                  class="btn secondary"
+                  type="button"
+                  disabled
+                >
+                  Suivante
+                </button>
+              </div>
+              <div class="control-row">
+                <button
+                  id="blackModeBtn"
+                  class="btn secondary mode-btn active"
+                  type="button"
+                >
+                  Mode cases
+                </button>
+                <button
+                  id="pieceModeBtn"
+                  class="btn secondary mode-btn"
+                  type="button"
+                >
+                  Mode piece
+                </button>
+              </div>
+              <div class="control-row">
+                <select
+                  id="pieceSelect"
+                  class="piece-select"
+                  aria-label="Piece a placer"
+                >
+                  <option value="F">F</option>
+                  <option value="I">I</option>
+                  <option value="L">L</option>
+                  <option value="N">N</option>
+                  <option value="P">P</option>
+                  <option value="T">T</option>
+                  <option value="U">U</option>
+                  <option value="V">V</option>
+                  <option value="W">W</option>
+                  <option value="X">X</option>
+                  <option value="Y">Y</option>
+                  <option value="Z">Z</option>
+                </select>
+                <button id="rotateBtn" class="btn secondary" type="button">
+                  Rotation
+                </button>
+                <button id="mirrorBtn" class="btn secondary" type="button">
+                  Miroir
+                </button>
+                <button id="clearPieceBtn" class="btn secondary" type="button">
+                  Retirer piece
+                </button>
+              </div>
+              <div id="fixedNote" class="fixed-note">Aucune piece fixee</div>
+              <div class="control-row">
+                <input
+                  id="limitInput"
+                  class="limit"
+                  type="number"
+                  min="1"
+                  max="500"
+                  value="50"
+                  aria-label="Nombre de solutions a chercher"
+                />
+                <button id="resetBtn" class="btn secondary" type="button">
+                  Reinitialiser
+                </button>
+                <button id="cornersBtn" class="btn secondary" type="button">
+                  Coins
+                </button>
+                <button id="clearBtn" class="btn secondary" type="button">
+                  Effacer
+                </button>
+              </div>
+            </div>
+          </section>
 
-    function showSolution(index) {
-      if (index < 0 || index >= solutions.length) return;
-      currentIndex = index;
-      renderSolution(solutions[currentIndex]);
-      setStatus("Solution affichee");
-      setControls(false);
-    }
+          <section class="panel">
+            <h2>Etat</h2>
+            <div class="metrics">
+              <div class="metric">
+                <span>Solution</span>
+                <strong id="solutionNo">0 / 0</strong>
+              </div>
+              <div class="metric">
+                <span>Pieces</span>
+                <strong>12</strong>
+              </div>
+              <div class="metric">
+                <span>Cases</span>
+                <strong id="openCells">60</strong>
+              </div>
+              <div class="metric">
+                <span>Noires</span>
+                <strong id="blockedCount">4 / 4</strong>
+              </div>
+            </div>
+          </section>
 
-    function startSolving() {
-      if (blockedCells.size !== 4) {
-        setStatus("Il faut exactement 4 cases noires");
-        return;
-      }
-      clearSolutions();
-      createBoard();
-      const limit = Math.max(1, Math.min(500, Number(limitInput.value) || 50));
-      limitInput.value = String(limit);
-      setStatus("Calcul en cours...");
-      running = true;
-      setControls(true);
+          <section class="panel">
+            <h2>Legende</h2>
+            <div id="legend" class="legend"></div>
+          </section>
 
-      const workerCode = `(${solverWorker.toString()})()`;
-      worker = new Worker(URL.createObjectURL(new Blob([workerCode], { type: "text/javascript" })));
-      worker.onmessage = (event) => {
-        const { type, solution, count, elapsedMs } = event.data;
-        if (type === "solution") {
-          solutions.push(solution);
-          if (currentIndex === -1) {
-            currentIndex = 0;
-            renderSolution(solution);
-          }
-          solutionNoEl.textContent = `${currentIndex + 1} / ${solutions.length}`;
-          setStatus(`${solutions.length} solution(s) trouvee(s)`);
-          setControls(true);
-        }
-        if (type === "done") {
-          const seconds = (elapsedMs / 1000).toFixed(2);
-          setStatus(count ? `${count} solution(s), ${seconds}s` : "Aucune solution");
-          running = false;
-          setControls(false);
-          worker = null;
-        }
-      };
-      worker.postMessage({
-        limit,
-        blocked: [...blockedCells].map((key) => key.split(",").map(Number))
-      });
-    }
+          <section class="panel coords-panel">
+            <h2>Coordonnees</h2>
+            <div id="coords" class="coords"></div>
+          </section>
+        </aside>
+      </section>
+    </main>
 
-    function solverWorker() {
-      const BOARD_SIZE = 8;
+    <script>
       const LETTERS = "ABCDEFGH";
-      let removed = new Set();
-      const PENTOMINOES = {
-        F: [[1, 0], [0, 1], [1, 1], [1, 2], [2, 2]],
-        I: [[0, 0], [0, 1], [0, 2], [0, 3], [0, 4]],
-        L: [[0, 0], [0, 1], [0, 2], [0, 3], [1, 3]],
-        P: [[0, 0], [1, 0], [0, 1], [1, 1], [0, 2]],
-        N: [[2, 0], [3, 0], [0, 1], [1, 1], [2, 1]],
-        T: [[0, 0], [1, 0], [2, 0], [1, 1], [1, 2]],
-        U: [[0, 0], [2, 0], [0, 1], [1, 1], [2, 1]],
-        V: [[0, 0], [0, 1], [0, 2], [1, 2], [2, 2]],
-        W: [[0, 0], [0, 1], [1, 1], [1, 2], [2, 2]],
-        X: [[1, 0], [0, 1], [1, 1], [2, 1], [1, 2]],
-        Y: [[0, 0], [0, 1], [0, 2], [0, 3], [1, 1]],
-        Z: [[0, 0], [1, 0], [1, 1], [1, 2], [2, 2]]
+      const PIECES = [
+        "F",
+        "I",
+        "L",
+        "N",
+        "P",
+        "T",
+        "U",
+        "V",
+        "W",
+        "X",
+        "Y",
+        "Z",
+      ];
+      const COLORS = {
+        F: "#ef476f",
+        I: "#118ab2",
+        L: "#ff9f1c",
+        N: "#8b5cf6",
+        P: "#06d6a0",
+        T: "#f97316",
+        U: "#3b82f6",
+        V: "#84cc16",
+        W: "#ec4899",
+        X: "#14b8a6",
+        Y: "#eab308",
+        Z: "#6366f1",
       };
+      const PENTOMINOES = {
+        F: [
+          [1, 0],
+          [0, 1],
+          [1, 1],
+          [1, 2],
+          [2, 2],
+        ],
+        I: [
+          [0, 0],
+          [0, 1],
+          [0, 2],
+          [0, 3],
+          [0, 4],
+        ],
+        L: [
+          [0, 0],
+          [0, 1],
+          [0, 2],
+          [0, 3],
+          [1, 3],
+        ],
+        P: [
+          [0, 0],
+          [1, 0],
+          [0, 1],
+          [1, 1],
+          [0, 2],
+        ],
+        N: [
+          [2, 0],
+          [3, 0],
+          [0, 1],
+          [1, 1],
+          [2, 1],
+        ],
+        T: [
+          [0, 0],
+          [1, 0],
+          [2, 0],
+          [1, 1],
+          [1, 2],
+        ],
+        U: [
+          [0, 0],
+          [2, 0],
+          [0, 1],
+          [1, 1],
+          [2, 1],
+        ],
+        V: [
+          [0, 0],
+          [0, 1],
+          [0, 2],
+          [1, 2],
+          [2, 2],
+        ],
+        W: [
+          [0, 0],
+          [0, 1],
+          [1, 1],
+          [1, 2],
+          [2, 2],
+        ],
+        X: [
+          [1, 0],
+          [0, 1],
+          [1, 1],
+          [2, 1],
+          [1, 2],
+        ],
+        Y: [
+          [0, 0],
+          [0, 1],
+          [0, 2],
+          [0, 3],
+          [1, 1],
+        ],
+        Z: [
+          [0, 0],
+          [1, 0],
+          [1, 1],
+          [1, 2],
+          [2, 2],
+        ],
+      };
+      const DEFAULT_BLOCKED = ["0,0", "7,0", "0,7", "7,7"];
+      const CELL_LABELS = [
+        ["1", "2", "3", "4", "5", "6", "7", "8"],
+        ["9", "10", "11", "12", "13", "14", "15", "16"],
+        ["17", "18", "19", "20", "21", "22", "23", "24"],
+        ["25", "26", "27", "28", "29", "30", "31", "Lun"],
+        ["Mar", "Mer", "Jeu", "Ven", "Sam", "Dim", "Jan", "Fevr"],
+        ["Mars", "Avr", "Mai", "Juin", "Juil", "Aout", "Sept", "Oct"],
+        ["1900s", "1910s", "1920s", "Nov", "Dec", "1930s", "1940s", "1950s"],
+        [
+          "1960s",
+          "1970s",
+          "1980s",
+          "1990s",
+          "2000s",
+          "2010s",
+          "2020s",
+          "2030s",
+        ],
+      ];
+
+      const boardEl = document.querySelector("#board");
+      const legendEl = document.querySelector("#legend");
+      const coordsEl = document.querySelector("#coords");
+      const statusEl = document.querySelector("#status");
+      const solutionNoEl = document.querySelector("#solutionNo");
+      const solveBtn = document.querySelector("#solveBtn");
+      const blackModeBtn = document.querySelector("#blackModeBtn");
+      const pieceModeBtn = document.querySelector("#pieceModeBtn");
+      const pieceSelect = document.querySelector("#pieceSelect");
+      const rotateBtn = document.querySelector("#rotateBtn");
+      const mirrorBtn = document.querySelector("#mirrorBtn");
+      const clearPieceBtn = document.querySelector("#clearPieceBtn");
+      const fixedNoteEl = document.querySelector("#fixedNote");
+      const prevBtn = document.querySelector("#prevBtn");
+      const nextBtn = document.querySelector("#nextBtn");
+      const resetBtn = document.querySelector("#resetBtn");
+      const cornersBtn = document.querySelector("#cornersBtn");
+      const clearBtn = document.querySelector("#clearBtn");
+      const limitInput = document.querySelector("#limitInput");
+      const openCellsEl = document.querySelector("#openCells");
+      const blockedCountEl = document.querySelector("#blockedCount");
+
+      let worker = null;
+      let solutions = [];
+      let currentIndex = -1;
+      let running = false;
+      let blockedCells = new Set(DEFAULT_BLOCKED);
+      let activeMode = "blocked";
+      let selectedPiece = "F";
+      let orientationIndex = 0;
+      let fixedPlacement = null;
+
+      function cellName(x, y) {
+        return `${LETTERS[x]}${y + 1}`;
+      }
+
+      function cellLabel(x, y) {
+        return CELL_LABELS[y][x];
+      }
 
       function normalize(cells) {
         const minX = Math.min(...cells.map(([x]) => x));
@@ -702,7 +736,7 @@
           .sort((a, b) => a[1] - b[1] || a[0] - b[0]);
       }
 
-      function key(cells) {
+      function shapeKey(cells) {
         return cells.map(([x, y]) => `${x},${y}`).join(";");
       }
 
@@ -713,143 +747,669 @@
             const transformed = cells.map(([x, y]) => [x * sx, y * sy]);
             for (const candidate of [
               normalize(transformed),
-              normalize(transformed.map(([x, y]) => [y, x]))
+              normalize(transformed.map(([x, y]) => [y, x])),
             ]) {
-              seen.set(key(candidate), candidate);
+              seen.set(shapeKey(candidate), candidate);
             }
           }
         }
         return [...seen.values()];
       }
 
-      function cellName([x, y]) {
-        return `${LETTERS[x]}${y + 1}`;
+      function selectedShape() {
+        const shapes = orientations(PENTOMINOES[selectedPiece]);
+        return shapes[orientationIndex % shapes.length];
       }
 
-      function validCells() {
-        const cells = [];
-        for (let y = 0; y < BOARD_SIZE; y += 1) {
-          for (let x = 0; x < BOARD_SIZE; x += 1) {
-            if (!removed.has(`${x},${y}`)) cells.push([x, y]);
+      function fixedCellKeys() {
+        if (!fixedPlacement) return new Set();
+        return new Set(fixedPlacement.cells.map(([x, y]) => `${x},${y}`));
+      }
+
+      function setMode(mode) {
+        activeMode = mode;
+        blackModeBtn.classList.toggle("active", mode === "blocked");
+        pieceModeBtn.classList.toggle("active", mode === "piece");
+        setStatus(
+          mode === "piece"
+            ? "Clique pour poser la piece"
+            : "Choisis 4 cases noires",
+        );
+      }
+
+      function updateFixedNote() {
+        if (!fixedPlacement) {
+          fixedNoteEl.textContent = "Aucune piece fixee";
+          return;
+        }
+        const cells = fixedPlacement.cells
+          .map(([x, y]) => `${cellLabel(x, y)} (${cellName(x, y)})`)
+          .join(" ");
+        fixedNoteEl.textContent = `Piece ${fixedPlacement.piece} fixee: ${cells}`;
+      }
+
+      function placeFixedPiece(anchorX, anchorY) {
+        if (running) return;
+        const cells = selectedShape().map(([x, y]) => [
+          x + anchorX,
+          y + anchorY,
+        ]);
+        const invalid = cells.some(([x, y]) => {
+          const key = `${x},${y}`;
+          return x < 0 || x >= 8 || y < 0 || y >= 8 || blockedCells.has(key);
+        });
+        if (invalid) {
+          setStatus("Placement impossible");
+          return;
+        }
+        clearSolutions();
+        fixedPlacement = {
+          piece: selectedPiece,
+          cells: cells.sort((a, b) => a[1] - b[1] || a[0] - b[0]),
+        };
+        createBoard();
+        setStatus(`Piece ${selectedPiece} fixee`);
+      }
+
+      function clearFixedPiece() {
+        if (running) return;
+        clearSolutions();
+        fixedPlacement = null;
+        createBoard();
+        setStatus("Piece retiree");
+      }
+
+      function createBoard() {
+        boardEl.replaceChildren();
+        boardEl.append(document.createElement("div"));
+        for (const letter of LETTERS) {
+          const axis = document.createElement("div");
+          axis.className = "axis";
+          axis.textContent = letter;
+          boardEl.append(axis);
+        }
+        for (let y = 0; y < 8; y += 1) {
+          const rowAxis = document.createElement("div");
+          rowAxis.className = "axis";
+          rowAxis.textContent = String(y + 1);
+          boardEl.append(rowAxis);
+          for (let x = 0; x < 8; x += 1) {
+            const cell = document.createElement("div");
+            const isBlocked = blockedCells.has(`${x},${y}`);
+            cell.className = `cell ${isBlocked ? "blocked" : "empty"}`;
+            cell.dataset.x = String(x);
+            cell.dataset.y = String(y);
+            cell.dataset.coord = cellName(x, y);
+            cell.dataset.label = cellLabel(x, y);
+            cell.dataset.detail = cellName(x, y);
+            cell.textContent = cellLabel(x, y);
+            cell.addEventListener("click", () => handleCellClick(x, y));
+            boardEl.append(cell);
           }
         }
-        return cells;
+        renderFixedPlacement();
+        updateBlockedMetrics();
+        updateFixedNote();
       }
 
-      function buildRows() {
-        const board = new Set(validCells().map(([x, y]) => `${x},${y}`));
-        const placements = [];
-        for (const [piece, cells] of Object.entries(PENTOMINOES)) {
-          for (const shape of orientations(cells)) {
-            const width = Math.max(...shape.map(([x]) => x)) + 1;
-            const height = Math.max(...shape.map(([, y]) => y)) + 1;
-            for (let yOffset = 0; yOffset <= BOARD_SIZE - height; yOffset += 1) {
-              for (let xOffset = 0; xOffset <= BOARD_SIZE - width; xOffset += 1) {
-                const placed = shape
-                  .map(([x, y]) => [x + xOffset, y + yOffset])
-                  .sort((a, b) => a[1] - b[1] || a[0] - b[0]);
-                if (placed.every(([x, y]) => board.has(`${x},${y}`))) {
-                  const columns = new Set([`piece:${piece}`]);
-                  for (const cell of placed) columns.add(`cell:${cellName(cell)}`);
-                  placements.push({ placement: { piece, cells: placed }, columns });
+      function createLegend() {
+        legendEl.replaceChildren();
+        for (const piece of PIECES) {
+          const item = document.createElement("div");
+          item.className = "legend-item";
+          const swatch = document.createElement("span");
+          swatch.className = "swatch";
+          swatch.style.background = COLORS[piece];
+          const label = document.createElement("span");
+          label.textContent = piece;
+          item.append(swatch, label);
+          legendEl.append(item);
+        }
+      }
+
+      function setStatus(text) {
+        statusEl.textContent = text;
+      }
+
+      function setControls(running) {
+        solveBtn.disabled = running;
+        limitInput.disabled = running;
+        cornersBtn.disabled = running;
+        clearBtn.disabled = running;
+        blackModeBtn.disabled = running;
+        pieceModeBtn.disabled = running;
+        pieceSelect.disabled = running;
+        rotateBtn.disabled = running;
+        mirrorBtn.disabled = running;
+        clearPieceBtn.disabled = running;
+        prevBtn.disabled = running || currentIndex <= 0;
+        nextBtn.disabled =
+          running || currentIndex < 0 || currentIndex >= solutions.length - 1;
+      }
+
+      function renderFixedPlacement() {
+        if (!fixedPlacement) return;
+        for (const [x, y] of fixedPlacement.cells) {
+          const cell = boardEl.querySelector(`[data-x="${x}"][data-y="${y}"]`);
+          if (!cell || blockedCells.has(`${x},${y}`)) continue;
+          cell.className = "cell";
+          cell.style.background = COLORS[fixedPlacement.piece];
+          cell.dataset.detail = cell.dataset.label;
+          cell.textContent = fixedPlacement.piece;
+        }
+      }
+
+      function updateBlockedMetrics() {
+        blockedCountEl.textContent = `${blockedCells.size} / 4`;
+        openCellsEl.textContent = String(64 - blockedCells.size);
+      }
+
+      function clearSolutions() {
+        solutions = [];
+        currentIndex = -1;
+        coordsEl.textContent = "";
+        solutionNoEl.textContent = "0 / 0";
+        if (worker) {
+          worker.terminate();
+          worker = null;
+        }
+        setControls(running);
+      }
+
+      function toggleBlockedCell(x, y) {
+        if (running) return;
+        const key = `${x},${y}`;
+        clearSolutions();
+        if (blockedCells.has(key)) {
+          blockedCells.delete(key);
+        } else if (fixedCellKeys().has(key)) {
+          setStatus("Case occupee par la piece fixee");
+          return;
+        } else if (blockedCells.size < 4) {
+          blockedCells.add(key);
+        } else {
+          setStatus("Maximum 4 cases noires");
+          return;
+        }
+        createBoard();
+        setStatus(
+          blockedCells.size === 4
+            ? "Pret a calculer"
+            : "Choisis 4 cases noires",
+        );
+      }
+
+      function setDefaultBlocked() {
+        if (running) return;
+        clearSolutions();
+        blockedCells = new Set(DEFAULT_BLOCKED);
+        if ([...fixedCellKeys()].some((key) => blockedCells.has(key))) {
+          fixedPlacement = null;
+        }
+        createBoard();
+        setStatus("Coins selectionnes");
+      }
+
+      function clearBlocked() {
+        if (running) return;
+        clearSolutions();
+        blockedCells = new Set();
+        createBoard();
+        setStatus("Choisis 4 cases noires");
+      }
+
+      function handleCellClick(x, y) {
+        if (activeMode === "piece") {
+          placeFixedPiece(x, y);
+        } else {
+          toggleBlockedCell(x, y);
+        }
+      }
+
+      function renderSolution(solution) {
+        const byCell = new Map();
+        for (const placement of solution) {
+          for (const [x, y] of placement.cells) {
+            byCell.set(`${x},${y}`, placement.piece);
+          }
+        }
+
+        for (const cell of boardEl.querySelectorAll(".cell")) {
+          const x = Number(cell.dataset.x);
+          const y = Number(cell.dataset.y);
+          const key = `${x},${y}`;
+          if (blockedCells.has(key)) {
+            cell.className = "cell blocked";
+            cell.style.background = "";
+            cell.dataset.detail = cell.dataset.coord;
+            cell.textContent = cell.dataset.label;
+            continue;
+          }
+          const piece = byCell.get(key);
+          cell.className = `cell ${piece ? "" : "empty"}`;
+          cell.style.background = piece ? COLORS[piece] : "";
+          cell.dataset.detail = piece ? cell.dataset.label : cell.dataset.coord;
+          cell.textContent = piece || cell.dataset.label;
+        }
+
+        const lines = [...solution]
+          .sort((a, b) => a.piece.localeCompare(b.piece))
+          .map((placement) => {
+            const row = document.createElement("div");
+            row.className = "coord-line";
+            const title = document.createElement("strong");
+            title.textContent = placement.piece;
+            const coords = document.createElement("span");
+            coords.textContent = placement.cells
+              .map(([x, y]) => `${cellLabel(x, y)} (${cellName(x, y)})`)
+              .join(" ");
+            row.append(title, coords);
+            return row;
+          });
+        coordsEl.replaceChildren(...lines);
+        solutionNoEl.textContent = `${currentIndex + 1} / ${solutions.length}`;
+        updateBlockedMetrics();
+      }
+
+      function resetView() {
+        clearSolutions();
+        createBoard();
+        setStatus(
+          blockedCells.size === 4
+            ? "Pret a calculer"
+            : "Choisis 4 cases noires",
+        );
+        setControls(false);
+      }
+
+      function showSolution(index) {
+        if (index < 0 || index >= solutions.length) return;
+        currentIndex = index;
+        renderSolution(solutions[currentIndex]);
+        setStatus("Solution affichee");
+        setControls(false);
+      }
+
+      function startSolving() {
+        if (blockedCells.size !== 4) {
+          setStatus("Il faut exactement 4 cases noires");
+          return;
+        }
+        clearSolutions();
+        createBoard();
+        const limit = Math.max(
+          1,
+          Math.min(500, Number(limitInput.value) || 50),
+        );
+        limitInput.value = String(limit);
+        setStatus("Calcul en cours...");
+        running = true;
+        setControls(true);
+
+        const workerCode = `(${solverWorker.toString()})()`;
+        worker = new Worker(
+          URL.createObjectURL(
+            new Blob([workerCode], { type: "text/javascript" }),
+          ),
+        );
+        worker.onmessage = (event) => {
+          const { type, solution, count, elapsedMs } = event.data;
+          if (type === "solution") {
+            solutions.push(solution);
+            if (currentIndex === -1) {
+              currentIndex = 0;
+              renderSolution(solution);
+            }
+            solutionNoEl.textContent = `${currentIndex + 1} / ${solutions.length}`;
+            setStatus(`${solutions.length} solution(s) trouvee(s)`);
+            setControls(true);
+          }
+          if (type === "done") {
+            const seconds = (elapsedMs / 1000).toFixed(2);
+            setStatus(
+              count ? `${count} solution(s), ${seconds}s` : "Aucune solution",
+            );
+            running = false;
+            setControls(false);
+            worker = null;
+          }
+        };
+        worker.postMessage({
+          limit,
+          blocked: [...blockedCells].map((key) => key.split(",").map(Number)),
+          fixed: fixedPlacement,
+        });
+      }
+
+      function solverWorker() {
+        const BOARD_SIZE = 8;
+        const LETTERS = "ABCDEFGH";
+        let removed = new Set();
+        const PENTOMINOES = {
+          F: [
+            [1, 0],
+            [0, 1],
+            [1, 1],
+            [1, 2],
+            [2, 2],
+          ],
+          I: [
+            [0, 0],
+            [0, 1],
+            [0, 2],
+            [0, 3],
+            [0, 4],
+          ],
+          L: [
+            [0, 0],
+            [0, 1],
+            [0, 2],
+            [0, 3],
+            [1, 3],
+          ],
+          P: [
+            [0, 0],
+            [1, 0],
+            [0, 1],
+            [1, 1],
+            [0, 2],
+          ],
+          N: [
+            [2, 0],
+            [3, 0],
+            [0, 1],
+            [1, 1],
+            [2, 1],
+          ],
+          T: [
+            [0, 0],
+            [1, 0],
+            [2, 0],
+            [1, 1],
+            [1, 2],
+          ],
+          U: [
+            [0, 0],
+            [2, 0],
+            [0, 1],
+            [1, 1],
+            [2, 1],
+          ],
+          V: [
+            [0, 0],
+            [0, 1],
+            [0, 2],
+            [1, 2],
+            [2, 2],
+          ],
+          W: [
+            [0, 0],
+            [0, 1],
+            [1, 1],
+            [1, 2],
+            [2, 2],
+          ],
+          X: [
+            [1, 0],
+            [0, 1],
+            [1, 1],
+            [2, 1],
+            [1, 2],
+          ],
+          Y: [
+            [0, 0],
+            [0, 1],
+            [0, 2],
+            [0, 3],
+            [1, 1],
+          ],
+          Z: [
+            [0, 0],
+            [1, 0],
+            [1, 1],
+            [1, 2],
+            [2, 2],
+          ],
+        };
+
+        function normalize(cells) {
+          const minX = Math.min(...cells.map(([x]) => x));
+          const minY = Math.min(...cells.map(([, y]) => y));
+          return cells
+            .map(([x, y]) => [x - minX, y - minY])
+            .sort((a, b) => a[1] - b[1] || a[0] - b[0]);
+        }
+
+        function key(cells) {
+          return cells.map(([x, y]) => `${x},${y}`).join(";");
+        }
+
+        function orientations(cells) {
+          const seen = new Map();
+          for (const sx of [1, -1]) {
+            for (const sy of [1, -1]) {
+              const transformed = cells.map(([x, y]) => [x * sx, y * sy]);
+              for (const candidate of [
+                normalize(transformed),
+                normalize(transformed.map(([x, y]) => [y, x])),
+              ]) {
+                seen.set(key(candidate), candidate);
+              }
+            }
+          }
+          return [...seen.values()];
+        }
+
+        function cellName([x, y]) {
+          return `${LETTERS[x]}${y + 1}`;
+        }
+
+        function validCells() {
+          const cells = [];
+          for (let y = 0; y < BOARD_SIZE; y += 1) {
+            for (let x = 0; x < BOARD_SIZE; x += 1) {
+              if (!removed.has(`${x},${y}`)) cells.push([x, y]);
+            }
+          }
+          return cells;
+        }
+
+        function buildRows() {
+          const board = new Set(validCells().map(([x, y]) => `${x},${y}`));
+          const placements = [];
+          for (const [piece, cells] of Object.entries(PENTOMINOES)) {
+            for (const shape of orientations(cells)) {
+              const width = Math.max(...shape.map(([x]) => x)) + 1;
+              const height = Math.max(...shape.map(([, y]) => y)) + 1;
+              for (
+                let yOffset = 0;
+                yOffset <= BOARD_SIZE - height;
+                yOffset += 1
+              ) {
+                for (
+                  let xOffset = 0;
+                  xOffset <= BOARD_SIZE - width;
+                  xOffset += 1
+                ) {
+                  const placed = shape
+                    .map(([x, y]) => [x + xOffset, y + yOffset])
+                    .sort((a, b) => a[1] - b[1] || a[0] - b[0]);
+                  if (placed.every(([x, y]) => board.has(`${x},${y}`))) {
+                    const columns = new Set([`piece:${piece}`]);
+                    for (const cell of placed)
+                      columns.add(`cell:${cellName(cell)}`);
+                    placements.push({
+                      placement: { piece, cells: placed },
+                      columns,
+                    });
+                  }
                 }
               }
             }
           }
-        }
-        return placements;
-      }
-
-      function solve(limit) {
-        const rows = buildRows();
-        const columns = [
-          ...Object.keys(PENTOMINOES).map((piece) => `piece:${piece}`),
-          ...validCells().map((cell) => `cell:${cellName(cell)}`)
-        ];
-        const columnToRows = new Map(columns.map((column) => [column, new Set()]));
-        rows.forEach((row, index) => {
-          for (const column of row.columns) columnToRows.get(column).add(index);
-        });
-
-        const activeColumns = new Set(columns);
-        const activeRows = new Set(rows.map((_, index) => index));
-        const partial = [];
-        let found = 0;
-
-        function intersectionCount(a, b) {
-          let count = 0;
-          for (const item of a) if (b.has(item)) count += 1;
-          return count;
+          return placements;
         }
 
-        function search() {
-          if (found >= limit) return;
-          if (activeColumns.size === 0) {
-            found += 1;
-            postMessage({
-              type: "solution",
-              solution: partial.map((rowIndex) => rows[rowIndex].placement)
-            });
-            return;
-          }
+        function sameCells(a, b) {
+          return key(a) === key(b);
+        }
 
-          let bestColumn = null;
-          let bestSize = Infinity;
-          for (const column of activeColumns) {
-            const size = intersectionCount(columnToRows.get(column), activeRows);
-            if (size < bestSize) {
-              bestColumn = column;
-              bestSize = size;
-              if (size === 0) break;
-            }
-          }
-          if (bestSize === 0) return;
+        function solve(limit, fixed) {
+          const rows = buildRows();
+          const columns = [
+            ...Object.keys(PENTOMINOES).map((piece) => `piece:${piece}`),
+            ...validCells().map((cell) => `cell:${cellName(cell)}`),
+          ];
+          const columnToRows = new Map(
+            columns.map((column) => [column, new Set()]),
+          );
+          rows.forEach((row, index) => {
+            for (const column of row.columns)
+              columnToRows.get(column).add(index);
+          });
 
-          const candidates = [...columnToRows.get(bestColumn)].filter((row) => activeRows.has(row));
-          for (const rowIndex of candidates) {
+          const activeColumns = new Set(columns);
+          const activeRows = new Set(rows.map((_, index) => index));
+          const partial = [];
+          let found = 0;
+
+          function coverRow(rowIndex) {
             const row = rows[rowIndex];
             const removedColumns = [];
             const removedRows = [];
             partial.push(rowIndex);
 
             for (const coveredColumn of row.columns) {
-              if (activeColumns.delete(coveredColumn)) removedColumns.push(coveredColumn);
+              if (activeColumns.delete(coveredColumn))
+                removedColumns.push(coveredColumn);
               for (const conflictingRow of columnToRows.get(coveredColumn)) {
-                if (activeRows.delete(conflictingRow)) removedRows.push(conflictingRow);
+                if (activeRows.delete(conflictingRow))
+                  removedRows.push(conflictingRow);
               }
             }
 
-            search();
-
-            for (const removedRow of removedRows) activeRows.add(removedRow);
-            for (const removedColumn of removedColumns) activeColumns.add(removedColumn);
-            partial.pop();
-            if (found >= limit) return;
+            return { removedColumns, removedRows };
           }
+
+          function uncoverRow(covered) {
+            for (const removedRow of covered.removedRows)
+              activeRows.add(removedRow);
+            for (const removedColumn of covered.removedColumns)
+              activeColumns.add(removedColumn);
+            partial.pop();
+          }
+
+          function intersectionCount(a, b) {
+            let count = 0;
+            for (const item of a) if (b.has(item)) count += 1;
+            return count;
+          }
+
+          function search() {
+            if (found >= limit) return;
+            if (activeColumns.size === 0) {
+              found += 1;
+              postMessage({
+                type: "solution",
+                solution: partial.map((rowIndex) => rows[rowIndex].placement),
+              });
+              return;
+            }
+
+            let bestColumn = null;
+            let bestSize = Infinity;
+            for (const column of activeColumns) {
+              const size = intersectionCount(
+                columnToRows.get(column),
+                activeRows,
+              );
+              if (size < bestSize) {
+                bestColumn = column;
+                bestSize = size;
+                if (size === 0) break;
+              }
+            }
+            if (bestSize === 0) return;
+
+            const candidates = [...columnToRows.get(bestColumn)].filter((row) =>
+              activeRows.has(row),
+            );
+            for (const rowIndex of candidates) {
+              const covered = coverRow(rowIndex);
+
+              search();
+
+              uncoverRow(covered);
+              if (found >= limit) return;
+            }
+          }
+
+          if (fixed) {
+            const fixedCells = [...fixed.cells].sort(
+              (a, b) => a[1] - b[1] || a[0] - b[0],
+            );
+            const fixedRowIndex = rows.findIndex(
+              (row) =>
+                row.placement.piece === fixed.piece &&
+                sameCells(row.placement.cells, fixedCells),
+            );
+            if (fixedRowIndex === -1) return 0;
+            coverRow(fixedRowIndex);
+          }
+
+          search();
+          return found;
         }
 
-        search();
-        return found;
+        onmessage = (event) => {
+          const started = performance.now();
+          removed = new Set(event.data.blocked.map(([x, y]) => `${x},${y}`));
+          const count = solve(event.data.limit, event.data.fixed);
+          postMessage({
+            type: "done",
+            count,
+            elapsedMs: performance.now() - started,
+          });
+        };
       }
 
-      onmessage = (event) => {
-        const started = performance.now();
-        removed = new Set(event.data.blocked.map(([x, y]) => `${x},${y}`));
-        const count = solve(event.data.limit);
-        postMessage({ type: "done", count, elapsedMs: performance.now() - started });
-      };
-    }
+      solveBtn.addEventListener("click", startSolving);
+      blackModeBtn.addEventListener("click", () => setMode("blocked"));
+      pieceModeBtn.addEventListener("click", () => setMode("piece"));
+      pieceSelect.addEventListener("change", () => {
+        selectedPiece = pieceSelect.value;
+        orientationIndex = 0;
+        setMode("piece");
+        setStatus(`Piece ${selectedPiece} selectionnee`);
+      });
+      rotateBtn.addEventListener("click", () => {
+        orientationIndex =
+          (orientationIndex + 1) %
+          orientations(PENTOMINOES[selectedPiece]).length;
+        setMode("piece");
+        setStatus("Orientation suivante");
+      });
+      mirrorBtn.addEventListener("click", () => {
+        const shape = selectedShape().map(([x, y]) => [-x, y]);
+        const target = shapeKey(normalize(shape));
+        const shapes = orientations(PENTOMINOES[selectedPiece]);
+        orientationIndex = Math.max(
+          0,
+          shapes.findIndex((candidate) => shapeKey(candidate) === target),
+        );
+        setMode("piece");
+        setStatus("Miroir applique");
+      });
+      clearPieceBtn.addEventListener("click", clearFixedPiece);
+      prevBtn.addEventListener("click", () => showSolution(currentIndex - 1));
+      nextBtn.addEventListener("click", () => showSolution(currentIndex + 1));
+      resetBtn.addEventListener("click", resetView);
+      cornersBtn.addEventListener("click", setDefaultBlocked);
+      clearBtn.addEventListener("click", clearBlocked);
 
-    solveBtn.addEventListener("click", startSolving);
-    prevBtn.addEventListener("click", () => showSolution(currentIndex - 1));
-    nextBtn.addEventListener("click", () => showSolution(currentIndex + 1));
-    resetBtn.addEventListener("click", resetView);
-    cornersBtn.addEventListener("click", setDefaultBlocked);
-    clearBtn.addEventListener("click", clearBlocked);
-
-    createBoard();
-    createLegend();
-    setControls(false);
-  </script>
-</body>
+      createBoard();
+      createLegend();
+      setControls(false);
+    </script>
+  </body>
 </html>
