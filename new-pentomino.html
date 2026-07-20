@@ -1,0 +1,958 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>New Pentamino 7x5</title>
+    <style>
+      :root {
+        --bg: #f6f4ef;
+        --panel: #ffffff;
+        --text: #1f2933;
+        --muted: #687385;
+        --line: #d7dde7;
+        --blocked: #222831;
+        --unknown: #b91c1c;
+        --accent: #0f766e;
+        --accent-strong: #0b5f59;
+        --shadow: 0 18px 45px rgba(31, 41, 51, 0.13);
+        --cell: clamp(44px, 10.2vmin, 78px);
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--text);
+        background:
+          linear-gradient(135deg, rgba(15, 118, 110, 0.12), transparent 34%),
+          linear-gradient(315deg, rgba(185, 28, 28, 0.1), transparent 30%),
+          var(--bg);
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      .app {
+        width: min(1160px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 24px 0 34px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 12px 0 22px;
+      }
+
+      .home-link {
+        color: var(--accent-strong);
+        font-weight: 850;
+        text-decoration: none;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(28px, 4vw, 48px);
+        line-height: 1;
+        letter-spacing: 0;
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 15px;
+      }
+
+      .status {
+        min-width: 230px;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.78);
+        border-radius: 8px;
+        color: var(--muted);
+        text-align: right;
+        font-weight: 650;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 360px;
+        gap: 22px;
+        align-items: start;
+      }
+
+      .board-wrap,
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.86);
+        box-shadow: var(--shadow);
+      }
+
+      .board-wrap {
+        display: grid;
+        justify-items: center;
+        gap: 14px;
+        padding: 18px;
+      }
+
+      .board {
+        display: grid;
+        grid-template-columns: 28px repeat(7, var(--cell));
+        grid-template-rows: 28px repeat(5, var(--cell));
+        gap: 4px;
+      }
+
+      .axis {
+        display: grid;
+        place-items: center;
+        color: #4b5565;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .cell {
+        position: relative;
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(31, 41, 51, 0.18);
+        border-radius: 8px;
+        background: #fdfdfb;
+        color: #13202a;
+        font-size: clamp(18px, 5vmin, 34px);
+        font-weight: 900;
+        line-height: 1;
+        cursor: pointer;
+        box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.08);
+      }
+
+      .cell::after {
+        content: attr(data-coord);
+        position: absolute;
+        left: 5px;
+        top: 4px;
+        font-size: 10px;
+        font-weight: 800;
+        color: rgba(19, 32, 42, 0.55);
+      }
+
+      .blocked {
+        background: repeating-linear-gradient(
+          135deg,
+          var(--blocked),
+          var(--blocked) 6px,
+          #3a424d 6px,
+          #3a424d 12px
+        );
+        color: #fff;
+        cursor: not-allowed;
+        box-shadow: none;
+      }
+
+      .unknown {
+        background: var(--unknown);
+        color: #fff;
+      }
+
+      .blocked::after,
+      .unknown::after {
+        color: rgba(255, 255, 255, 0.75);
+      }
+
+      .side {
+        display: grid;
+        gap: 14px;
+      }
+
+      .panel {
+        padding: 14px;
+      }
+
+      .panel h2 {
+        margin: 0 0 12px;
+        font-size: 16px;
+        letter-spacing: 0;
+      }
+
+      .controls,
+      .coords {
+        display: grid;
+        gap: 8px;
+      }
+
+      .control-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 40px;
+        padding: 0 14px;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        background: var(--accent);
+        color: #fff;
+        cursor: pointer;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .btn:hover {
+        background: var(--accent-strong);
+      }
+
+      .btn.secondary {
+        border-color: var(--line);
+        background: #fff;
+        color: var(--text);
+      }
+
+      .btn.secondary:hover {
+        background: #f1f5f4;
+      }
+
+      .btn:disabled {
+        cursor: not-allowed;
+        opacity: 0.52;
+      }
+
+      .limit {
+        width: 86px;
+        min-height: 40px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 0 10px;
+        color: var(--text);
+        background: #fff;
+        font-weight: 750;
+      }
+
+      .metrics {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .metric {
+        padding: 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      .metric span {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .metric strong {
+        display: block;
+        margin-top: 3px;
+        font-size: 20px;
+      }
+
+      .legend {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+      }
+
+      .legend-item {
+        display: grid;
+        grid-template-columns: 50px 1fr;
+        align-items: center;
+        gap: 8px;
+        min-height: 58px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        cursor: pointer;
+        font-weight: 850;
+        padding: 7px;
+        user-select: none;
+      }
+
+      .legend-item.active {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+      }
+
+      .legend-item.disabled {
+        opacity: 0.42;
+      }
+
+      .swatch {
+        display: grid;
+        grid-template-columns: repeat(5, 8px);
+        grid-template-rows: repeat(5, 8px);
+        gap: 1px;
+        width: 44px;
+        height: 44px;
+        align-content: center;
+        justify-content: center;
+      }
+
+      .mini-cell {
+        width: 8px;
+        height: 8px;
+        border-radius: 2px;
+      }
+
+      .mini-cell.filled {
+        border: 1px solid rgba(31, 41, 51, 0.2);
+      }
+
+      .coords {
+        max-height: 260px;
+        overflow: auto;
+      }
+
+      .coord-line {
+        display: grid;
+        grid-template-columns: 22px 1fr;
+        gap: 8px;
+        align-items: start;
+        font-size: 13px;
+        color: #3b4655;
+        line-height: 1.35;
+      }
+
+      .coord-line strong {
+        color: var(--text);
+      }
+
+      @media (max-width: 940px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+
+        .side {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 640px) {
+        :root {
+          --cell: min(12vw, 48px);
+        }
+
+        .app {
+          width: min(100% - 18px, 1160px);
+          padding-top: 12px;
+        }
+
+        .topbar {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .status {
+          min-width: 0;
+          text-align: left;
+        }
+
+        .board-wrap {
+          padding: 10px;
+          overflow-x: auto;
+          justify-items: start;
+        }
+
+        .side {
+          grid-template-columns: 1fr;
+        }
+
+        .btn {
+          flex: 1 1 auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <header class="topbar">
+        <div>
+          <a class="home-link" href="index.html">Accueil</a>
+          <h1>New Pentamino</h1>
+          <p class="subtitle">Echiquier A-G / 1-5, A1 B1 F1 G1 bloques, 1 case inconnue, 6 pieces.</p>
+        </div>
+        <div id="status" class="status">Choisis une case inconnue et 6 pieces</div>
+      </header>
+
+      <section class="layout">
+        <div class="board-wrap">
+          <div id="board" class="board" aria-label="Echiquier 7 par 5"></div>
+        </div>
+
+        <aside class="side">
+          <section class="panel">
+            <h2>Commandes</h2>
+            <div class="controls">
+              <div class="control-row">
+                <button id="solveBtn" class="btn" type="button">Calculer</button>
+                <button id="prevBtn" class="btn secondary" type="button" disabled>Precedente</button>
+                <button id="nextBtn" class="btn secondary" type="button" disabled>Suivante</button>
+              </div>
+              <div class="control-row">
+                <input id="limitInput" class="limit" type="number" min="1" max="500" value="50" aria-label="Nombre de solutions a chercher" />
+                <button id="resetBtn" class="btn secondary" type="button">Reinitialiser</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <h2>Etat</h2>
+            <div class="metrics">
+              <div class="metric">
+                <span>Solution</span>
+                <strong id="solutionNo">0 / 0</strong>
+              </div>
+              <div class="metric">
+                <span>Pieces</span>
+                <strong id="pieceCount">0 / 6</strong>
+              </div>
+              <div class="metric">
+                <span>Cases libres</span>
+                <strong>30</strong>
+              </div>
+              <div class="metric">
+                <span>Inconnue</span>
+                <strong id="unknownLabel">-</strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <h2>Pieces</h2>
+            <div id="legend" class="legend"></div>
+          </section>
+
+          <section class="panel">
+            <h2>Coordonnees</h2>
+            <div id="coords" class="coords"></div>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <script>
+      const WIDTH = 7;
+      const HEIGHT = 5;
+      const LETTERS = "ABCDEFG";
+      const PIECES = ["F", "I", "L", "N", "P", "T", "U", "V", "W", "X", "Y", "Z"];
+      const FIXED_BLOCKED = new Set(["0,0", "1,0", "5,0", "6,0"]);
+      const COLORS = {
+        F: "#ef476f",
+        I: "#118ab2",
+        L: "#ff9f1c",
+        N: "#8b5cf6",
+        P: "#06d6a0",
+        T: "#f97316",
+        U: "#3b82f6",
+        V: "#84cc16",
+        W: "#ec4899",
+        X: "#14b8a6",
+        Y: "#eab308",
+        Z: "#6366f1",
+      };
+      const PENTOMINOES = {
+        F: [[1, 0], [0, 1], [1, 1], [1, 2], [2, 2]],
+        I: [[0, 0], [0, 1], [0, 2], [0, 3], [0, 4]],
+        L: [[0, 0], [0, 1], [0, 2], [0, 3], [1, 3]],
+        P: [[0, 0], [1, 0], [0, 1], [1, 1], [0, 2]],
+        N: [[2, 0], [3, 0], [0, 1], [1, 1], [2, 1]],
+        T: [[0, 0], [1, 0], [2, 0], [1, 1], [1, 2]],
+        U: [[0, 0], [2, 0], [0, 1], [1, 1], [2, 1]],
+        V: [[0, 0], [0, 1], [0, 2], [1, 2], [2, 2]],
+        W: [[0, 0], [0, 1], [1, 1], [1, 2], [2, 2]],
+        X: [[1, 0], [0, 1], [1, 1], [2, 1], [1, 2]],
+        Y: [[0, 0], [0, 1], [0, 2], [0, 3], [1, 1]],
+        Z: [[0, 0], [1, 0], [1, 1], [1, 2], [2, 2]],
+      };
+
+      const boardEl = document.querySelector("#board");
+      const legendEl = document.querySelector("#legend");
+      const coordsEl = document.querySelector("#coords");
+      const statusEl = document.querySelector("#status");
+      const solutionNoEl = document.querySelector("#solutionNo");
+      const pieceCountEl = document.querySelector("#pieceCount");
+      const unknownLabelEl = document.querySelector("#unknownLabel");
+      const solveBtn = document.querySelector("#solveBtn");
+      const prevBtn = document.querySelector("#prevBtn");
+      const nextBtn = document.querySelector("#nextBtn");
+      const resetBtn = document.querySelector("#resetBtn");
+      const limitInput = document.querySelector("#limitInput");
+
+      let unknownCell = null;
+      let selectedPieces = new Set();
+      let solutions = [];
+      let currentIndex = -1;
+      let worker = null;
+      let running = false;
+
+      function cellName(x, y) {
+        return `${LETTERS[x]}${y + 1}`;
+      }
+
+      function normalize(cells) {
+        const minX = Math.min(...cells.map(([x]) => x));
+        const minY = Math.min(...cells.map(([, y]) => y));
+        return cells
+          .map(([x, y]) => [x - minX, y - minY])
+          .sort((a, b) => a[1] - b[1] || a[0] - b[0]);
+      }
+
+      function shapeKey(cells) {
+        return cells.map(([x, y]) => `${x},${y}`).join(";");
+      }
+
+      function createBoard() {
+        boardEl.replaceChildren();
+        boardEl.append(document.createElement("div"));
+        for (const letter of LETTERS) {
+          const axis = document.createElement("div");
+          axis.className = "axis";
+          axis.textContent = letter;
+          boardEl.append(axis);
+        }
+        for (let y = 0; y < HEIGHT; y += 1) {
+          const rowAxis = document.createElement("div");
+          rowAxis.className = "axis";
+          rowAxis.textContent = String(y + 1);
+          boardEl.append(rowAxis);
+          for (let x = 0; x < WIDTH; x += 1) {
+            const key = `${x},${y}`;
+            const cell = document.createElement("button");
+            cell.type = "button";
+            cell.className = "cell";
+            cell.dataset.coord = cellName(x, y);
+            cell.dataset.x = String(x);
+            cell.dataset.y = String(y);
+            cell.textContent = "";
+            if (FIXED_BLOCKED.has(key)) {
+              cell.classList.add("blocked");
+              cell.textContent = "X";
+              cell.disabled = true;
+            } else if (unknownCell === key) {
+              cell.classList.add("unknown");
+              cell.textContent = "?";
+            }
+            cell.addEventListener("click", () => chooseUnknown(x, y));
+            boardEl.append(cell);
+          }
+        }
+      }
+
+      function createLegend() {
+        legendEl.replaceChildren();
+        for (const piece of PIECES) {
+          const item = document.createElement("button");
+          item.type = "button";
+          item.className = "legend-item";
+          item.dataset.piece = piece;
+          const swatch = document.createElement("span");
+          swatch.className = "swatch";
+          const shape = normalize(PENTOMINOES[piece]);
+          const filled = new Set(shape.map(([x, y]) => `${x},${y}`));
+          for (let y = 0; y < 5; y += 1) {
+            for (let x = 0; x < 5; x += 1) {
+              const mini = document.createElement("span");
+              mini.className = `mini-cell ${filled.has(`${x},${y}`) ? "filled" : ""}`;
+              if (filled.has(`${x},${y}`)) mini.style.background = COLORS[piece];
+              swatch.append(mini);
+            }
+          }
+          const label = document.createElement("span");
+          label.textContent = piece;
+          item.append(swatch, label);
+          item.addEventListener("click", () => togglePiece(piece));
+          legendEl.append(item);
+        }
+        updateLegend();
+      }
+
+      function setStatus(text) {
+        statusEl.textContent = text;
+      }
+
+      function clearSolutions() {
+        solutions = [];
+        currentIndex = -1;
+        coordsEl.textContent = "";
+        solutionNoEl.textContent = "0 / 0";
+        if (worker) {
+          worker.terminate();
+          worker = null;
+        }
+        setControls();
+      }
+
+      function chooseUnknown(x, y) {
+        if (running) return;
+        const key = `${x},${y}`;
+        if (FIXED_BLOCKED.has(key)) return;
+        clearSolutions();
+        unknownCell = unknownCell === key ? null : key;
+        createBoard();
+        updateMetrics();
+        setStatus(unknownCell ? `Case inconnue: ${cellName(x, y)}` : "Choisis une case inconnue");
+      }
+
+      function togglePiece(piece) {
+        if (running) return;
+        clearSolutions();
+        if (selectedPieces.has(piece)) {
+          selectedPieces.delete(piece);
+        } else if (selectedPieces.size < 6) {
+          selectedPieces.add(piece);
+        } else {
+          setStatus("Maximum 6 pieces");
+          return;
+        }
+        updateLegend();
+        updateMetrics();
+        setStatus(`${selectedPieces.size} piece(s) selectionnee(s)`);
+      }
+
+      function updateLegend() {
+        for (const item of legendEl.querySelectorAll(".legend-item")) {
+          const piece = item.dataset.piece;
+          const active = selectedPieces.has(piece);
+          item.classList.toggle("active", active);
+          item.classList.toggle("disabled", !active && selectedPieces.size >= 6);
+        }
+      }
+
+      function updateMetrics() {
+        pieceCountEl.textContent = `${selectedPieces.size} / 6`;
+        unknownLabelEl.textContent = unknownCell
+          ? cellName(...unknownCell.split(",").map(Number))
+          : "-";
+      }
+
+      function setControls() {
+        solveBtn.disabled = running;
+        limitInput.disabled = running;
+        resetBtn.disabled = running;
+        prevBtn.disabled = running || currentIndex <= 0;
+        nextBtn.disabled = running || currentIndex < 0 || currentIndex >= solutions.length - 1;
+        for (const item of legendEl.querySelectorAll(".legend-item")) {
+          item.disabled = running;
+        }
+      }
+
+      function renderSolution(solution) {
+        const byCell = new Map();
+        for (const placement of solution) {
+          for (const [x, y] of placement.cells) byCell.set(`${x},${y}`, placement.piece);
+        }
+
+        for (const cell of boardEl.querySelectorAll(".cell")) {
+          const x = Number(cell.dataset.x);
+          const y = Number(cell.dataset.y);
+          const key = `${x},${y}`;
+          cell.className = "cell";
+          cell.style.background = "";
+          cell.disabled = false;
+          if (FIXED_BLOCKED.has(key)) {
+            cell.classList.add("blocked");
+            cell.textContent = "X";
+            cell.disabled = true;
+          } else if (unknownCell === key) {
+            cell.classList.add("unknown");
+            cell.textContent = "?";
+          } else {
+            const piece = byCell.get(key);
+            cell.textContent = piece || "";
+            if (piece) cell.style.background = COLORS[piece];
+          }
+        }
+
+        const lines = [...solution]
+          .sort((a, b) => a.piece.localeCompare(b.piece))
+          .map((placement) => {
+            const row = document.createElement("div");
+            row.className = "coord-line";
+            const title = document.createElement("strong");
+            title.textContent = placement.piece;
+            const coords = document.createElement("span");
+            coords.textContent = placement.cells.map(([x, y]) => cellName(x, y)).join(" ");
+            row.append(title, coords);
+            return row;
+          });
+        coordsEl.replaceChildren(...lines);
+        solutionNoEl.textContent = `${currentIndex + 1} / ${solutions.length}`;
+      }
+
+      function showSolution(index) {
+        if (index < 0 || index >= solutions.length) return;
+        currentIndex = index;
+        renderSolution(solutions[currentIndex]);
+        setStatus("Solution affichee");
+        setControls();
+      }
+
+      function resetAll() {
+        if (running) return;
+        clearSolutions();
+        unknownCell = null;
+        selectedPieces = new Set();
+        createBoard();
+        updateLegend();
+        updateMetrics();
+        setStatus("Choisis une case inconnue et 6 pieces");
+      }
+
+      function startSolving() {
+        if (!unknownCell) {
+          setStatus("Il faut choisir une case inconnue");
+          return;
+        }
+        if (selectedPieces.size !== 6) {
+          setStatus("Il faut choisir exactement 6 pieces");
+          return;
+        }
+        clearSolutions();
+        createBoard();
+        const limit = Math.max(1, Math.min(500, Number(limitInput.value) || 50));
+        limitInput.value = String(limit);
+        running = true;
+        setControls();
+        setStatus("Calcul en cours...");
+
+        const workerCode = `(${solverWorker.toString()})()`;
+        worker = new Worker(URL.createObjectURL(new Blob([workerCode], { type: "text/javascript" })));
+        worker.onmessage = (event) => {
+          const { type, solution, count, elapsedMs } = event.data;
+          if (type === "solution") {
+            solutions.push(solution);
+            if (currentIndex === -1) {
+              currentIndex = 0;
+              renderSolution(solution);
+            }
+            solutionNoEl.textContent = `${currentIndex + 1} / ${solutions.length}`;
+            setStatus(`${solutions.length} solution(s) trouvee(s)`);
+            setControls();
+          }
+          if (type === "done") {
+            running = false;
+            const seconds = (elapsedMs / 1000).toFixed(2);
+            setStatus(count ? `${count} solution(s), ${seconds}s` : "Aucune solution");
+            worker = null;
+            setControls();
+          }
+        };
+        worker.postMessage({
+          limit,
+          pieces: [...selectedPieces],
+          removed: [...FIXED_BLOCKED, unknownCell].map((key) => key.split(",").map(Number)),
+        });
+      }
+
+      function solverWorker() {
+        const WIDTH = 7;
+        const HEIGHT = 5;
+        const LETTERS = "ABCDEFG";
+        let allowedPieces = [];
+        let removed = new Set();
+        const PENTOMINOES = {
+          F: [[1, 0], [0, 1], [1, 1], [1, 2], [2, 2]],
+          I: [[0, 0], [0, 1], [0, 2], [0, 3], [0, 4]],
+          L: [[0, 0], [0, 1], [0, 2], [0, 3], [1, 3]],
+          P: [[0, 0], [1, 0], [0, 1], [1, 1], [0, 2]],
+          N: [[2, 0], [3, 0], [0, 1], [1, 1], [2, 1]],
+          T: [[0, 0], [1, 0], [2, 0], [1, 1], [1, 2]],
+          U: [[0, 0], [2, 0], [0, 1], [1, 1], [2, 1]],
+          V: [[0, 0], [0, 1], [0, 2], [1, 2], [2, 2]],
+          W: [[0, 0], [0, 1], [1, 1], [1, 2], [2, 2]],
+          X: [[1, 0], [0, 1], [1, 1], [2, 1], [1, 2]],
+          Y: [[0, 0], [0, 1], [0, 2], [0, 3], [1, 1]],
+          Z: [[0, 0], [1, 0], [1, 1], [1, 2], [2, 2]],
+        };
+
+        function normalize(cells) {
+          const minX = Math.min(...cells.map(([x]) => x));
+          const minY = Math.min(...cells.map(([, y]) => y));
+          return cells
+            .map(([x, y]) => [x - minX, y - minY])
+            .sort((a, b) => a[1] - b[1] || a[0] - b[0]);
+        }
+
+        function key(cells) {
+          return cells.map(([x, y]) => `${x},${y}`).join(";");
+        }
+
+        function orientations(cells) {
+          const seen = new Map();
+          for (const sx of [1, -1]) {
+            for (const sy of [1, -1]) {
+              const transformed = cells.map(([x, y]) => [x * sx, y * sy]);
+              for (const candidate of [
+                normalize(transformed),
+                normalize(transformed.map(([x, y]) => [y, x])),
+              ]) {
+                seen.set(key(candidate), candidate);
+              }
+            }
+          }
+          return [...seen.values()];
+        }
+
+        function cellName([x, y]) {
+          return `${LETTERS[x]}${y + 1}`;
+        }
+
+        function validCells() {
+          const cells = [];
+          for (let y = 0; y < HEIGHT; y += 1) {
+            for (let x = 0; x < WIDTH; x += 1) {
+              if (!removed.has(`${x},${y}`)) cells.push([x, y]);
+            }
+          }
+          return cells;
+        }
+
+        function buildRows() {
+          const board = new Set(validCells().map(([x, y]) => `${x},${y}`));
+          const rows = [];
+          for (const piece of allowedPieces) {
+            for (const shape of orientations(PENTOMINOES[piece])) {
+              const width = Math.max(...shape.map(([x]) => x)) + 1;
+              const height = Math.max(...shape.map(([, y]) => y)) + 1;
+              for (let yOffset = 0; yOffset <= HEIGHT - height; yOffset += 1) {
+                for (let xOffset = 0; xOffset <= WIDTH - width; xOffset += 1) {
+                  const placed = shape
+                    .map(([x, y]) => [x + xOffset, y + yOffset])
+                    .sort((a, b) => a[1] - b[1] || a[0] - b[0]);
+                  if (placed.every(([x, y]) => board.has(`${x},${y}`))) {
+                    const columns = new Set([`piece:${piece}`]);
+                    for (const cell of placed) columns.add(`cell:${cellName(cell)}`);
+                    rows.push({ placement: { piece, cells: placed }, columns });
+                  }
+                }
+              }
+            }
+          }
+          return rows;
+        }
+
+        function solve(limit) {
+          const rows = buildRows();
+          const columns = [
+            ...allowedPieces.map((piece) => `piece:${piece}`),
+            ...validCells().map((cell) => `cell:${cellName(cell)}`),
+          ];
+          const columnToRows = new Map(columns.map((column) => [column, new Set()]));
+          rows.forEach((row, index) => {
+            for (const column of row.columns) columnToRows.get(column).add(index);
+          });
+
+          const activeColumns = new Set(columns);
+          const activeRows = new Set(rows.map((_, index) => index));
+          const partial = [];
+          let found = 0;
+
+          function coverRow(rowIndex) {
+            const row = rows[rowIndex];
+            const removedColumns = [];
+            const removedRows = [];
+            partial.push(rowIndex);
+            for (const coveredColumn of row.columns) {
+              if (activeColumns.delete(coveredColumn)) removedColumns.push(coveredColumn);
+              for (const conflictingRow of columnToRows.get(coveredColumn)) {
+                if (activeRows.delete(conflictingRow)) removedRows.push(conflictingRow);
+              }
+            }
+            return { removedColumns, removedRows };
+          }
+
+          function uncoverRow(covered) {
+            for (const removedRow of covered.removedRows) activeRows.add(removedRow);
+            for (const removedColumn of covered.removedColumns) activeColumns.add(removedColumn);
+            partial.pop();
+          }
+
+          function intersectionCount(a, b) {
+            let count = 0;
+            for (const item of a) if (b.has(item)) count += 1;
+            return count;
+          }
+
+          function search() {
+            if (found >= limit) return;
+            if (activeColumns.size === 0) {
+              found += 1;
+              postMessage({
+                type: "solution",
+                solution: partial.map((rowIndex) => rows[rowIndex].placement),
+              });
+              return;
+            }
+            let bestColumn = null;
+            let bestSize = Infinity;
+            for (const column of activeColumns) {
+              const size = intersectionCount(columnToRows.get(column), activeRows);
+              if (size < bestSize) {
+                bestColumn = column;
+                bestSize = size;
+                if (size === 0) break;
+              }
+            }
+            if (bestSize === 0) return;
+            const candidates = [...columnToRows.get(bestColumn)].filter((row) => activeRows.has(row));
+            for (const rowIndex of candidates) {
+              const covered = coverRow(rowIndex);
+              search();
+              uncoverRow(covered);
+              if (found >= limit) return;
+            }
+          }
+
+          search();
+          return found;
+        }
+
+        onmessage = (event) => {
+          const started = performance.now();
+          allowedPieces = event.data.pieces;
+          removed = new Set(event.data.removed.map(([x, y]) => `${x},${y}`));
+          const count = solve(event.data.limit);
+          postMessage({ type: "done", count, elapsedMs: performance.now() - started });
+        };
+      }
+
+      solveBtn.addEventListener("click", startSolving);
+      prevBtn.addEventListener("click", () => showSolution(currentIndex - 1));
+      nextBtn.addEventListener("click", () => showSolution(currentIndex + 1));
+      resetBtn.addEventListener("click", resetAll);
+
+      createBoard();
+      createLegend();
+      updateMetrics();
+      setControls();
+    </script>
+  </body>
+</html>
