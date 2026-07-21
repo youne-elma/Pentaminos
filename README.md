@@ -4,10 +4,10 @@ Interface web pour trouver des solutions de pentaminos.
 
 La page d'accueil `index.html` propose deux modes :
 
-- `Pentaminos Normal` : solveur 8x8 historique dans `normal.html`.
-- `New Pentamino` : variante 7x5 dans `new-pentomino.html`.
+- `Pentaminos Extreme` : solveur 8x8 historique dans `normal.html`.
+- `Pentaminos Easy pro` : variante 7x5 dans `new-pentomino.html`.
 
-## Pentaminos Normal
+## Pentaminos Extreme
 
 Le mode normal utilise un echiquier 8x8.
 
@@ -23,11 +23,11 @@ Ouvrir `normal.html` dans un navigateur, puis :
 
 Le bouton `Coins` selectionne automatiquement `A1`, `A8`, `H1` et `H8`.
 
-## New Pentamino
+## Pentaminos Easy pro
 
 Le nouveau mode utilise un echiquier 7x5, de `A` a `G` et de `1` a `5`.
 
-Les cases `A1`, `B1`, `F1` et `G1` sont deja bloquees. Il faut ensuite choisir une seule case inconnue et exactement 6 pieces parmi les 12 pentominos avant de lancer la recherche.
+Les cases `D5`, `E5`, `F5` et `G5` sont deja bloquees. Il faut ensuite choisir une seule case inconnue et exactement 6 pieces parmi les 12 pentominos avant de lancer la recherche.
 
 ## Version console
 
